@@ -1,0 +1,27 @@
+# Core AI framework
+langchain
+langchain-community
+langchain-google-genai
+langgraph
+
+# LLM
+google-generativeai
+
+# Voice generation
+elevenlabs
+
+# Animation and video
+manim
+moviepy
+
+# Audio processing
+openai-whisper
+pydub
+
+# Data validation
+pydantic
+
+# Utilities
+python-dotenv
+requests
+setuptools
