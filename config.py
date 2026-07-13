@@ -8,7 +8,7 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
 # ── LLM ───────────────────────────────────────────────────────────────────────
-LLM_MODEL = "gemini-2.0-flash"
+LLM_MODEL = "gemma-4-26b-a4b-it"
 LLM_TEMPERATURE = 0.7        # higher than RAG project — we want creative scripts
 
 # ── ElevenLabs Voice IDs ───────────────────────────────────────────────────────
@@ -19,9 +19,13 @@ VOICE_ID_PRIMARY = "EXAVITQu4vr4xnSDxMaL"
 VOICE_ID_SECONDARY = "ErXwobaYiN019PkySvjV"
 
 # ── Video Settings ─────────────────────────────────────────────────────────────
-DEFAULT_TARGET_DURATION = 180    # 3 minutes in seconds
-MAX_SCENES = 10                  # prevents runaway script generation
-MIN_SCENES = 4                   # ensures enough content
+VIDEO_FORMATS = {
+    "short":       {"target_duration": 60,   "min_scenes": 2, "max_scenes": 4},
+    "medium":      {"target_duration": 180,  "min_scenes": 4, "max_scenes": 8},
+    "long":        {"target_duration": 600,  "min_scenes": 8, "max_scenes": 18},
+    "auto":        {"target_duration": None, "min_scenes": 3, "max_scenes": 40},
+}
+DEFAULT_FORMAT = "medium"
 
 # ── Manim Settings ────────────────────────────────────────────────────────────
 MANIM_QUALITY = "medium_quality" # low_quality / medium_quality / high_quality

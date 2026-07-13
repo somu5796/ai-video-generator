@@ -204,10 +204,12 @@ class VideoState(BaseModel):
         default=VideoStyle.TECHNICAL,
         description="Visual style"
     )
-    target_duration: float = Field(
-        default=180.0,
-        description="Target video duration in seconds"
-    )
+    format: str = Field(default="medium")          
+    target_duration: Optional[float] = Field(
+        default=None,
+        escription="Target video duration in seconds"
+    )  # ← make optional
+    
     output_filename: Optional[str] = Field(
         default=None,
         description="Custom output filename. Auto-generated from topic if None."
