@@ -7,16 +7,26 @@ load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
+ELEVENLABS_MODEL = "eleven_multilingual_v2"
+
 # ── LLM ───────────────────────────────────────────────────────────────────────
 LLM_MODEL = "gemma-4-26b-a4b-it"
 LLM_TEMPERATURE = 0.7        # higher than RAG project — we want creative scripts
 
 # ── ElevenLabs Voice IDs ───────────────────────────────────────────────────────
-# These are free tier voice IDs from ElevenLabs
-# Rachel — calm, clear, educational — best for technical content
-VOICE_ID_PRIMARY = "EXAVITQu4vr4xnSDxMaL"
-# Antoni — warm, conversational — used as second speaker in dialogue mode
-VOICE_ID_SECONDARY = "ErXwobaYiN019PkySvjV"
+# Roger - Laid-Back, Casual, Resonant → CwhRBWXzGAHq8TQ4Fs17
+# Sarah - Mature, Reassuring, Confident → EXAVITQu4vr4xnSDxMaL
+# Laura - Enthusiast, Quirky Attitude → FGY2WhTYpPnrIDTdsKH5
+# Charlie - Deep, Confident, Energetic → IKne3meq5aSn9XLyUdCD
+# George - Warm, Captivating Storyteller → JBFqnCBsd6RMkjVDRZzb
+# Callum - Husky Trickster → N2lVS1w4EtoT3dr4eOWO
+# River - Relaxed, Neutral, Informative → SAz9YHcvj6GT2YYXdXww
+# Harry - Fierce Warrior → SOYHLrjzK2X1ezoPC6cr
+# Liam - Energetic, Social Media Creator → TX3LPaxmHKxFdv7VOQHJ
+# Alice - Clear, Engaging Educator → Xb7hH8MSUJpSbSDYk0k2
+VOICE_ID_PRIMARY = "Xb7hH8MSUJpSbSDYk0k2"  # Alice — clear, engaging, educational — used for single-speaker narration
+# Laura - Enthusiast, Quirky Attitude → FGY2WhTYpPnrIDTdsKH5
+VOICE_ID_SECONDARY = "FGY2WhTYpPnrIDTdsKH5"
 
 # ── Video Settings ─────────────────────────────────────────────────────────────
 VIDEO_FORMATS = {
