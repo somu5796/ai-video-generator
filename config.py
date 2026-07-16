@@ -25,7 +25,7 @@ LLM_TEMPERATURE = 0.7        # higher than RAG project — we want creative scri
 # Liam - Energetic, Social Media Creator → TX3LPaxmHKxFdv7VOQHJ
 # Alice - Clear, Engaging Educator → Xb7hH8MSUJpSbSDYk0k2
 VOICE_ID_PRIMARY = "Xb7hH8MSUJpSbSDYk0k2"  # Alice — clear, engaging, educational — used for single-speaker narration
-# Laura - Enthusiast, Quirky Attitude → FGY2WhTYpPnrIDTdsKH5
+# L used as second speaker in dialogue mode
 VOICE_ID_SECONDARY = "FGY2WhTYpPnrIDTdsKH5"
 
 # ── Video Settings ─────────────────────────────────────────────────────────────

@@ -79,7 +79,7 @@ def visual_agent(state : dict) -> dict:
             style=style_str,
         )
 
-        if result.["success"]:
+        if result["success"]:
             scene.video_file_path = result["file_path"]
             print(f"  [Visual Agent] ✅ Scene {scene_num} rendered")
         else:

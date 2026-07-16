@@ -217,3 +217,19 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 .env
+
+# Generated outputs — never commit these
+outputs/
+assets/background_music.mp3
+
+# Manim temp files
+*.mp4
+*.mp3
+*.srt
+
+# Keep folder structure but ignore contents
+outputs/**/*
+!outputs/**/.gitkeep
+
+assets/**/*
+!assets/.gitkeep
