@@ -1,5 +1,6 @@
 from schemas.video_schema import PipelineStatus, VideoStyle
 from tools.manim_tool import render_manim_scene
+from config import SCENES_DIR
 
 def visual_agent(state : dict) -> dict:
     """
@@ -43,6 +44,9 @@ def visual_agent(state : dict) -> dict:
     updated_scenes = []
     errors = []
 
+    run_dirs = state.get("run_dirs")
+    scenes_output_dir = run_dirs["scenes_dir"] if run_dirs else SCENES_DIR
+
     for scene in script.scenes:
         scene_num = scene.scene_number
         print(f"\n[Visual Agent] Rendering Scene {scene_num}: {scene.title}")
@@ -77,6 +81,7 @@ def visual_agent(state : dict) -> dict:
             visual_elements=visual_elements,
             actual_duration=duration,
             style=style_str,
+            output_dir=scenes_output_dir,
         )
 
         if result["success"]:

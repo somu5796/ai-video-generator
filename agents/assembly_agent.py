@@ -37,8 +37,12 @@ def assembly_agent(state: dict) -> dict:
             "errors": ["Assembly Agent: no script found in state"]
         }
     
-    os.makedirs(FINAL_DIR, exist_ok=True)
-    os.makedirs(SCENES_DIR, exist_ok=True)
+    run_dirs = state.get("run_dirs")
+    scenes_dir = run_dirs["scenes_dir"] if run_dirs else SCENES_DIR
+    final_dir = run_dirs["final_dir"] if run_dirs else FINAL_DIR
+    
+    os.makedirs(final_dir, exist_ok=True)    
+    os.makedirs(scenes_dir, exist_ok=True)
 
     # Validate all scenes have both audio and video
     missing = []
@@ -63,7 +67,7 @@ def assembly_agent(state: dict) -> dict:
     errors = []
 
     for scene in script.scenes:
-        merged_path = os.path.join(SCENES_DIR, f"scene_{scene.scene_number:02d}_merged.mp4")
+        merged_path = os.path.join(scenes_dir, f"scene_{scene.scene_number:02d}_merged.mp4")
 
         print(f"  Merging scene {scene.scene_number}...")
         result = merge_video_audio(
@@ -95,7 +99,7 @@ def assembly_agent(state: dict) -> dict:
         for c in script.title
     ).replace(" ", "_")[:50]
 
-    concatenated_path = os.path.join(FINAL_DIR, f"{safe_title}_raw.mp4")
+    concatenated_path = os.path.join(final_dir, f"{safe_title}_raw.mp4")
 
     result = concatenate_videos(
         video_paths=merged_paths,
@@ -114,7 +118,7 @@ def assembly_agent(state: dict) -> dict:
     print("\n[Assembly Agent] Step 3: Adding background music...")
 
     music_path = os.path.join("assets", "background_music.mp3")
-    with_music_path = os.path.join(FINAL_DIR, f"{safe_title}_music.mp4")
+    with_music_path = os.path.join(final_dir, f"{safe_title}_music.mp4")
 
     result = add_background_music(
         video_path=concatenated_path,
@@ -129,7 +133,7 @@ def assembly_agent(state: dict) -> dict:
     # Step 4: Burn subtitles 
     print("\n[Assembly Agent] Step 4: Burning subtitles...")
 
-    final_path = os.path.join(FINAL_DIR, f"{safe_title}_final.mp4")
+    final_path = os.path.join(final_dir, f"{safe_title}_final.mp4")
 
     # Convert scenes to plain dicts for moviepy_tool
     scenes_data = []

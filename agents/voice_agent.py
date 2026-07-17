@@ -88,6 +88,11 @@ def voice_agent(state : dict) -> dict:
         # zero-padding ensures correct alphabetical sort order
         # scene_10 sorts after scene_09, not after scene_1
 
+        # Use run-specific audio dir if available, else fall back to config default
+        run_dirs = state.get("run_dirs")
+        audio_output_dir = run_dirs["audio_dir"] if run_dirs else AUDIO_DIR
+        os.makedirs(audio_output_dir, exist_ok=True)
+
         print(f"\n[Voice Agent] Processing Scene {scene_num}: {scene.title}")
 
         # Single narration mode
@@ -102,7 +107,8 @@ def voice_agent(state : dict) -> dict:
             result = generate_audio_for_text(
                 text=scene.narration,
                 voice_id=script.speaker_config.speaker_a_voice_id or VOICE_ID_PRIMARY,
-                output_filename=output_filename
+                output_filename=output_filename,
+                output_dir=audio_output_dir, 
             )
 
         # Dialogue mode
@@ -114,6 +120,7 @@ def voice_agent(state : dict) -> dict:
                     text=scene.narration or "",
                     voice_id=VOICE_ID_PRIMARY,
                     output_filename=output_filename,
+                    output_dir=audio_output_dir, 
                 )
             else:
                 dialogue_data = [
@@ -122,7 +129,8 @@ def voice_agent(state : dict) -> dict:
                 ]
                 result = generate_dialogue_audio(
                     dialogue_lines=dialogue_data,
-                    output_filename=output_filename
+                    output_filename=output_filename,
+                    output_dir=audio_output_dir, 
                 )
             
         # Handle result

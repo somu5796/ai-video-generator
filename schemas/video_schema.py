@@ -215,6 +215,12 @@ class VideoState(BaseModel):
         description="Custom output filename. Auto-generated from topic if None."
     )
 
+    # Run Dirs to have topic specific paths
+    run_dirs: Optional[dict] = Field(
+        default=None,
+        description="Output directories for this run. Set by pipeline before agents start."
+    )
+
     # Filled progressively by each agent
     script: Optional[Script] = Field(
         default=None,

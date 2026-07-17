@@ -226,6 +226,7 @@ def render_manim_scene(
     visual_elements: list,
     actual_duration: float,
     style: str = "technical",
+    output_dir: str = None,
 ) -> dict:
     """
     Generates Manim code for a scene and renders it to MP4.
@@ -248,13 +249,18 @@ def render_manim_scene(
       file_path: str (path to final MP4)
       error: str (if failed)
     """
-    os.makedirs(SCENES_DIR, exist_ok=True)
+
+    if output_dir is None:
+        from config import SCENES_DIR
+        output_dir = SCENES_DIR
+    os.makedirs(output_dir, exist_ok=True)
+    
 
     class_name = f"Scene{scene_number:02d}"
     script_filename = f"scene_{scene_number:02d}_manim.py"
-    script_path = os.path.join(SCENES_DIR, script_filename)
+    script_path = os.path.join(output_dir, script_filename)
     output_filename = f"scene_{scene_number:02d}.mp4"
-    output_path = os.path.join(SCENES_DIR, output_filename)
+    output_path = os.path.join(output_dir, output_filename)
 
     #Step 1 & 2 : Generate code and write to file
     manim_code = generate_manim_scene_code(
@@ -279,7 +285,7 @@ def render_manim_scene(
         script_path,
         class_name,
         "--output_file", output_filename,
-        "--media_dir", SCENES_DIR
+        "--media_dir", output_dir
     ]
     print(f"  [Manim] Rendering {class_name} ({MANIM_QUALITY})...")
     print(f"  [Manim] This may take 30-120 seconds per scene...")
@@ -291,7 +297,7 @@ def render_manim_scene(
             # Step 4: Find the rendered MP4 in Manim's output directory
             # Manim saves to: media_dir/videos/script_name/quality/ClassName.mp4
             rendered_path = find_rendered_mp4(
-                SCENES_DIR, class_name, script_filename
+                output_dir, class_name, script_filename
             )
 
             if rendered_path and os.path.exists(rendered_path):

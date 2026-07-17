@@ -1,6 +1,9 @@
 import os
 from dotenv import load_dotenv
 
+import re
+from datetime import datetime
+
 load_dotenv()
 
 # ── API Keys ───────────────────────────────────────────────────────────────────
@@ -59,3 +62,33 @@ FINAL_DIR = os.path.join(OUTPUTS_DIR, "final")
 
 # ── Pipeline Settings ──────────────────────────────────────────────────────────
 MAX_RETRIES = 3                  # how many times to retry a failed agent
+
+
+def get_output_dirs(topic: str) -> dict:
+    """
+    Creates unique output directories per pipeline run.
+    Each topic gets its own timestamped folder so videos
+    never overwrite each other.
+
+    Returns dict of paths that agents write their files to.
+    These paths are stored in VideoState and passed through
+    the entire pipeline via LangGraph state.
+    """
+    slug = re.sub(r'[^a-zA-Z0-9\s]', '', topic.lower())
+    slug = re.sub(r'\s+', '_', slug.strip())[:30]
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_id = f"{slug}_{timestamp}"
+
+    run_dir = os.path.join(OUTPUTS_DIR, run_id)
+
+    dirs = {
+        "run_dir":    os.path.join(run_dir),
+        "audio_dir":  os.path.join(run_dir, "audio"),
+        "scenes_dir": os.path.join(run_dir, "scenes"),
+        "final_dir":  os.path.join(run_dir, "final"),
+    }
+
+    for dir_path in dirs.values():
+        os.makedirs(dir_path, exist_ok=True)
+
+    return dirs

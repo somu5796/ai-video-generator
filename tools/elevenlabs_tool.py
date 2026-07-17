@@ -37,6 +37,7 @@ def generate_audio_for_text(
     text : str,
     voice_id : str,
     output_filename : str,
+    output_dir: str = None,      # Run dirs path
     voice_settings : dict = None
 ) -> dict :
     """
@@ -59,9 +60,13 @@ def generate_audio_for_text(
     if voice_settings is None:
         voice_settings = DEFAULT_VOICE_SETTINGS
     
+    if output_dir is None:
+        output_dir = AUDIO_DIR
+
+    
     # Ensure output directory exists
-    os.makedirs(AUDIO_DIR, exist_ok=True)
-    output_path = os.path.join(AUDIO_DIR, output_filename)
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, output_filename)
 
     headers = {
         "xi-api-key": ELEVENLABS_API_KEY,
@@ -145,6 +150,7 @@ def generate_audio_for_text(
 def generate_dialogue_audio(
     dialogue_lines: list,
     output_filename: str,
+    output_dir: str = None,
 ) -> dict:
     """
     Generates audio for dialogue mode — alternating between two voices.
@@ -166,8 +172,11 @@ def generate_dialogue_audio(
         {"speaker": "speaker_b", "text": "CAP theorem defines..."},
       ]
     """
-    
-    os.makedirs(AUDIO_DIR, exist_ok=True)
+
+    if output_dir is None:
+        from config import AUDIO_DIR
+        output_dir = AUDIO_DIR
+    os.makedirs(output_dir, exist_ok=True)
 
     # Map speaker roles to voice IDs
     voice_map = {
@@ -187,7 +196,7 @@ def generate_dialogue_audio(
         text = line.get("text", "")
         voice_id = voice_map.get(speaker, VOICE_ID_PRIMARY)
         temp_filename = f"temp_dialogue_{i}.mp3"
-        temp_path = os.path.join(AUDIO_DIR, temp_filename)
+        temp_path = os.path.join(output_dir, temp_filename)
 
         print(f"  [ElevenLabs] Dialogue line {i+1}/{len(dialogue_lines)} — {speaker}")
 
@@ -196,6 +205,7 @@ def generate_dialogue_audio(
             text=text,
             voice_id=voice_id,
             output_filename=temp_filename,
+            output_dir=output_dir
         )
 
         if not result["success"]:
@@ -221,7 +231,7 @@ def generate_dialogue_audio(
         time.sleep(0.5)
 
     # Save final combined audio
-    output_path = os.path.join(AUDIO_DIR, output_filename)
+    output_path = os.path.join(output_dir, output_filename)
     combined_audio.export(output_path, format="mp3")
     duration = len(combined_audio) / 1000.0  # pydub uses milliseconds
 

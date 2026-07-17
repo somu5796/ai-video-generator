@@ -1,5 +1,6 @@
 import json
 import re
+import os
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 from utils.llm_helpers import extract_text_from_response
@@ -591,6 +592,15 @@ def script_agent(state: dict) -> dict:
             print(f"[Script Agent] Duration : {script.total_estimated_duration}s")
             print(f"[Script Agent] Tags     : {', '.join(script.tags[:3])}...")
 
+            # Save script to disk for debugging and potential reuse
+            run_dirs = state.get("run_dirs")
+            if run_dirs:
+                scripts_dir = run_dirs["run_dir"]  # save in run root
+                script_path = os.path.join(scripts_dir, "script.json")
+                with open(script_path, "w") as f:
+                    json.dump(script.model_dump(), f, indent=2, default=str)
+                print(f"[Script Agent] Script saved: {script_path}")
+                
             return {
                 "script": script,
                 "status": PipelineStatus.SCRIPT_COMPLETE,
