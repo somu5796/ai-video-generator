@@ -82,6 +82,7 @@ def visual_agent(state : dict) -> dict:
             actual_duration=duration,
             style=style_str,
             output_dir=scenes_output_dir,
+            narration=scene.narration or "",
         )
 
         if result["success"]:

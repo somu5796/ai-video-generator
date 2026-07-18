@@ -31,173 +31,191 @@ ANIM_DURATIONS = {
 }
 
 def generate_manim_scene_code(
-    scene_number : int,
-    scene_title : str,
-    visual_elements : list,
-    actual_duration : float,
-    style : str = "technical"
+    scene_number: int,
+    scene_title: str,
+    visual_elements: list,
+    actual_duration: float,
+    style: str = "technical",
+    narration: str = "",
 ) -> str:
     """
-    Generates a complete Manim Python script for one scene.
+    Kinetic typography — clean professional word-by-word reveal.
 
-    Why generate code instead of calling Manim directly?
-    Manim requires Python class definitions — there is no
-    functional API to call programmatically. We generate
-    the class definition as a string, write it to a file,
-    and execute it. This is the standard approach for
-    dynamic Manim usage.
+    Technique:
+      Each line is rendered as a single Text object.
+      As each word is added, we replace the line Text with
+      a longer version containing the new word.
+      This gives natural font spacing — no cramming.
 
-    The generated code:
-      1. Imports Manim
-      2. Defines a Scene class with construct() method
-      3. Adds each visual element at its appear_at time
-      4. Fills remaining time with self.wait() to match audio duration
+    Layout:
+      Title: very top, small, stays throughout
+      Lines: build from top of content zone downward
+      When MAX_LINES reached: all lines fade, restart from top
     """
 
-    # Style configuration, Colors adapt to the video style
     style_config = {
         "technical": {
-            "background": "\"#0D1117\"",   # dark GitHub-like background
-            "title_color": "\"#58A6FF\"",  # blue
-            "text_color": "WHITE",
-            "bullet_color": "\"#3FB950\"", # green
-            "diagram_color": "\"#F78166\"", # red/orange
-            "code_color": "\"#FFA657\"",   # orange
+            "background":   "WHITE",
+            "title_color":  "\"#7B1FA2\"",   # Bright Orange
+            "line_colors":  [
+                "\"#0F172A\"",   # Cyan
+                "\"#0F172A\"",
+                "\"#0F172A\"",
+                "\"#0F172A\"",
+            ],
+            "title_bg":     "\"#F3E5F5\"",
         },
         "finance": {
-            "background": "\"#FFFFFF\"",
-            "title_color": "\"#1A1A2E\"",
-            "text_color": "\"#16213E\"",
-            "bullet_color": "\"#0F3460\"",
-            "diagram_color": "\"#E94560\"",
-            "code_color": "\"#533483\"",
+            "background":   "\"#FFFDE7\"",
+            "title_color":  "\"#1A237E\"",
+            "line_colors":  [
+                "\"#212121\"",
+                "\"#1A237E\"",
+                "\"#1B5E20\"",
+                "\"#E65100\"",
+            ],
+            "title_bg":     "\"#FFF9C4\"",
         },
         "general": {
-            "background": "\"#1A1A2E\"",
-            "title_color": "\"#E94560\"",
-            "text_color": "WHITE",
-            "bullet_color": "\"#0F3460\"",
-            "diagram_color": "\"#533483\"",
-            "code_color": "\"#E94560\"",
-        }
+            "background":   "\"#0D1117\"",
+            "title_color":  "\"#58A6FF\"",
+            "line_colors":  [
+                "WHITE",
+                "\"#3FB950\"",
+                "\"#FFA657\"",
+                "YELLOW",
+            ],
+            "title_bg":     "\"#161B22\"",
+        },
     }
 
     colors = style_config.get(style, style_config["technical"])
 
-    # Build animation sequence,Each element becomes a block of Manim code, We track current_time to calculate wait() durations
+    # ── Layout ─────────────────────────────────────────────────────────────────
+    WORDS_PER_SEC  = 1.9
+    WORDS_PER_LINE = 6        # fewer words per line = more breathing room
+    MAX_LINES      = 5
+    FONT_SIZE      = 38       # large, readable
+    TITLE_FONT    = 40
+    LINE_GAP       = 0.9      # vertical space between lines
+    FIRST_LINE_Y   = 1.7      # y position of first line (below title)
+    WORD_TIME      = 0.15     # seconds per word appearance
+    PAGE_FADE_T    = 0.5
 
     animation_blocks = []
     current_time = 0.0
-    element_vars = []  # track variable names for cleanup
-    
-    # Sort elements by appear_at to ensure correct order
-    sorted_elements = sorted(visual_elements, key=lambda e: e.get("appear_at", 0.0))
 
-    for i,element in enumerate(sorted_elements):
-        appear_at = element.get("appear_at" , 0.0)
-        visual_type = element.get("visual_type", "bullet")
-        text = element.get("text", "").replace('"', '\\"').replace("'", "\\'")
-        position = element.get("position", "center")
-        emphasis = element.get("emphasis", False)
-        var_name = f"elem_{i}"
-        element_vars.append(var_name)
+    vcounter = [0]
+    def nv(prefix="v"):
+        vcounter[0] += 1
+        return f"{prefix}{vcounter[0]}"
 
-        anim_duration = ANIM_DURATIONS.get(visual_type, 0.6)
+    def add_wait(until):
+        nonlocal current_time
+        gap = until - current_time
+        if gap > 0.02:
+            animation_blocks.append(f"        self.wait({gap:.2f})")
+            current_time = until
 
-        # Calculate wait time before this element
-        wait_before = appear_at - current_time
-        if wait_before > 0.05:
-            animation_blocks.append(f"        self.wait({wait_before:.2f})")
-        
-        # Generate animation code based on visual type
-        if visual_type == "title":
-            animation_blocks.extend([
-                f'        {var_name} = Text("{text}", font_size=56, color={colors["title_color"]})',
-                f"        {var_name}.move_to(UP * 2.5)",
-                f"        self.play(FadeIn({var_name}), run_time={anim_duration})",
-            ])   
-        elif visual_type == "subtitle":
-            animation_blocks.extend([
-                f'        {var_name} = Text("{text}", font_size=36, color={colors["text_color"]})',
-                f"        {var_name}.move_to(UP * 1.5)",
-                f"        self.play(FadeIn({var_name}), run_time={anim_duration})",
-            ])
-        elif visual_type == "bullet":
-            # Stack bullets vertically based on how many have appeared
-            bullet_index = sum(
-                1 for e in sorted_elements[:i]
-                if e.get("visual_type") == "bullet"
-            )
-            y_pos = 0.5 - (bullet_index * 0.8)
-            animation_blocks.extend([
-                f'        {var_name} = Text("• {text}", font_size=32, color={colors["bullet_color"]})',
-                f"        {var_name}.move_to(LEFT * 2 + UP * {y_pos:.1f})",
-                f"        {var_name}.align_to(LEFT * 5, LEFT)",
-                f"        self.play(Write({var_name}), run_time={anim_duration})",
-            ])
+    # ── Title bar at very top ──────────────────────────────────────────────────
+    safe_title = scene_title.replace('"', '\\"')
+    animation_blocks.extend([
+        f'        title_bg = Rectangle('
+        f'width=20, height=0.9, '
+        f'fill_color={colors["title_bg"]}, '
+        f'fill_opacity=1, '
+        f'stroke_width=0)',
+        f'        title_bg.move_to(UP * 3.3)',
+        f'        title = Text("{safe_title}", font_size={TITLE_FONT}, '
+        f'color={colors["title_color"]}, weight=BOLD)',
+        f'        title.move_to(UP * 3.3)',
+        f'        self.add(title_bg)',
+        f'        self.add(title)',
+    ])
 
-        elif visual_type == "diagram":
-            animation_blocks.extend([
-                f'        {var_name}_box = RoundedRectangle(corner_radius=0.2, width=4, height=1.5, color={colors["diagram_color"]})',
-                f'        {var_name}_text = Text("{text}", font_size=28, color={colors["diagram_color"]})',
-                f"        {var_name}_text.move_to({var_name}_box.get_center())",
-                f"        {var_name} = VGroup({var_name}_box, {var_name}_text)",
-                f"        {var_name}.move_to(ORIGIN)",
-                f"        self.play(Create({var_name}_box), Write({var_name}_text), run_time={anim_duration})",
-            ])
-        elif visual_type == "code":
-            # Code blocks use monospace styling
-            animation_blocks.extend([
-                f'        {var_name} = Code(code="{text}", language="python", font_size=24)',
-                f"        {var_name}.move_to(DOWN * 0.5)",
-                f"        self.play(Write({var_name}), run_time={anim_duration})",
-            ])
+    # ── Process narration ──────────────────────────────────────────────────────
+    if narration and narration.strip():
+        words = narration.split()
+        total_words = len(words)
+        word_index = 0
 
-        elif visual_type == "equation":
-            animation_blocks.extend([
-                f'        {var_name} = MathTex(r"{text}", color={colors["text_color"]})',
-                f"        {var_name}.scale(1.2)",
-                f"        {var_name}.move_to(ORIGIN)",
-                f"        self.play(Write({var_name}), run_time={anim_duration})",
-            ])
-        elif visual_type == "arrow":
-            animation_blocks.extend([
-                f'        {var_name} = Arrow(LEFT * 2, RIGHT * 2, color={colors["diagram_color"]})',
-                f'        {var_name}_label = Text("{text}", font_size=28, color={colors["text_color"]})',
-                f"        {var_name}_label.next_to({var_name}, UP)",
-                f"        self.play(GrowArrow({var_name}), Write({var_name}_label), run_time={anim_duration})",
-            ])
+        while word_index < total_words:
+            # ── Build one page of MAX_LINES lines ────────────────────────────
+            page_line_vars = []   # track current Text object for each line
+            page_word_count = 0
 
-        elif visual_type == "highlight":
-            animation_blocks.extend([
-                f'        {var_name} = Text("{text}", font_size=40, color=YELLOW)',
-                f"        {var_name}.move_to(ORIGIN)",
-                f"        self.play(FadeIn({var_name}, scale=1.3), run_time={anim_duration})",
-            ])
+            for line_num in range(MAX_LINES):
+                if word_index >= total_words:
+                    break
 
-        else:
-            # Fallback for unknown types
-            animation_blocks.extend([
-                f'        {var_name} = Text("{text}", font_size=32, color={colors["text_color"]})',
-                f"        self.play(FadeIn({var_name}), run_time={anim_duration})",
-            ])
-        # Add emphasis flash if requested
-        if emphasis:
-            animation_blocks.append(
-                f"        self.play(Indicate({var_name}), run_time=0.5)"
-            )
-            anim_duration += 0.5
+                y_pos = FIRST_LINE_Y - (line_num * LINE_GAP)
+                line_color = colors["line_colors"][line_num % len(colors["line_colors"])]
+                current_line_words = []
+                current_line_var = None
 
-        current_time = appear_at + anim_duration
+                for word_pos in range(WORDS_PER_LINE):
+                    if word_index >= total_words:
+                        break
 
-    # Fill remaining time with wait() to match actual audio duration
-    remaining_time = actual_duration - current_time
-    if remaining_time > 0.1:
-        animation_blocks.append(
-            f"        self.wait({remaining_time:.2f})"
-        )
-    
-    # Assemble the full python file for the Manim script
+                    word = words[word_index]
+                    safe_word = word.replace('"', '\\"').replace("\\", "\\\\")
+                    current_line_words.append(safe_word)
+                    word_index += 1
+                    page_word_count += 1
+
+                    # Calculate when this word should appear
+                    global_word_time = (word_index - 1) / WORDS_PER_SEC
+                    add_wait(global_word_time)
+
+                    # Build new line text with all words so far
+                    line_text = " ".join(current_line_words)
+                    new_var = nv("t")
+
+                    animation_blocks.extend([
+                        f'        {new_var} = Text("{line_text}", '
+                        f'font_size={FONT_SIZE}, color={line_color}, weight=BOLD)',
+                        f'        {new_var}.move_to(UP * {y_pos:.2f})',
+                        f'        {new_var}.align_to(LEFT * 6.5, LEFT)',
+                    ])
+
+                    if current_line_var is None:
+                        # First word — fade in fresh
+                        animation_blocks.append(
+                            f'        self.play(FadeIn({new_var}), run_time={WORD_TIME})'
+                        )
+                    else:
+                        # Add new longer line on top — no fade out, no flicker
+                        # Old line is covered by new line instantly via self.add
+                        # then new word fades in cleanly
+                        animation_blocks.extend([
+                            f'        self.play('
+                            f'FadeOut({current_line_var}), '
+                            f'FadeIn({new_var}), '
+                            f'run_time={WORD_TIME})'
+                        ])
+
+                    current_time += WORD_TIME
+                    current_line_var = new_var
+
+                if current_line_var:
+                    page_line_vars.append(current_line_var)
+
+            # ── Fade out entire page before next page ─────────────────────────
+            if word_index < total_words and page_line_vars:
+                animation_blocks.append(f"        self.wait(0.4)")
+                current_time += 0.4
+                vars_str = ", ".join(page_line_vars)
+                animation_blocks.append(
+                    f"        self.play(FadeOut(VGroup({vars_str})), "
+                    f"run_time={PAGE_FADE_T})"
+                )
+                current_time += PAGE_FADE_T
+
+    # ── Fill remaining time ────────────────────────────────────────────────────
+    remaining = actual_duration - current_time
+    if remaining > 0.1:
+        animation_blocks.append(f"        self.wait({remaining:.2f})")
+
     class_name = f"Scene{scene_number:02d}"
     animation_code = "\n".join(animation_blocks)
 
@@ -205,20 +223,21 @@ def generate_manim_scene_code(
 
 config.background_color = {colors["background"]}
 config.pixel_height = 1080
-config.pixel_width = 1920
-config.frame_rate = 30
+config.pixel_width  = 1920
+config.frame_rate   = 30
 
 class {class_name}(Scene):
     """
-    Auto-generated Manim scene for: {scene_title}
-    Scene number: {scene_number}
+    Scene: {scene_title}
     Duration: {actual_duration}s
+    Style: kinetic typography
     """
     def construct(self):
 {animation_code}
 '''
-    
     return code
+
+
 
 def render_manim_scene(
     scene_number: int,
@@ -227,6 +246,7 @@ def render_manim_scene(
     actual_duration: float,
     style: str = "technical",
     output_dir: str = None,
+    narration: str = "", 
 ) -> dict:
     """
     Generates Manim code for a scene and renders it to MP4.
@@ -268,7 +288,8 @@ def render_manim_scene(
         scene_title=scene_title,
         visual_elements=visual_elements,
         actual_duration=actual_duration,
-        style=style
+        style=style,
+        narration=narration,
     )
 
     with open(script_path, "w") as f:
