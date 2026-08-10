@@ -233,3 +233,4 @@ outputs/**/*
 
 assets/**/*
 !assets/.gitkeep
+.DS_Store
