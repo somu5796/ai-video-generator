@@ -14,6 +14,10 @@ elevenlabs
 manim
 moviepy
 
+# Deck-mode slide rendering (v2) — local, free, no API cost.
+# After pip install, run once: playwright install chromium
+playwright
+
 # Audio processing
 openai-whisper
 pydub

@@ -88,10 +88,11 @@ def get_output_dirs(topic: str) -> dict:
     run_dir = os.path.join(OUTPUTS_DIR, run_id)
 
     dirs = {
-        "run_dir":    os.path.join(run_dir),
-        "audio_dir":  os.path.join(run_dir, "audio"),
-        "scenes_dir": os.path.join(run_dir, "scenes"),
-        "final_dir":  os.path.join(run_dir, "final"),
+        "run_dir":     os.path.join(run_dir),
+        "audio_dir":   os.path.join(run_dir, "audio"),
+        "scenes_dir":  os.path.join(run_dir, "scenes"),
+        "final_dir":   os.path.join(run_dir, "final"),
+        "preview_dir": os.path.join(run_dir, "deck_preview"),
     }
 
     for dir_path in dirs.values():
