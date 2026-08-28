@@ -97,10 +97,34 @@ CRITICAL RULES — follow these exactly:
    Alternate speaker_a and speaker_b naturally.
    speaker_a asks or introduces, speaker_b explains in depth.
 
-6. SCENE STRUCTURE:
-   Scene 1: Hook — grab attention, state what viewer will learn
-   Scene 2 to N-1: Core content — one concept per scene
-   Scene N: Summary + call to action
+6. SCENE STRUCTURE — decompose the topic BEFORE deciding scene count:
+
+   Step A — Check for a fixed, named set of sub-concepts.
+   Many topics have one built in: an acronym (SOLID, CAP, ACID), numbered
+   steps, distinct "types of X", layers (OSI model), or named principles.
+   If the topic has one, identify EXACTLY how many named parts it has.
+
+   Step B — If a fixed set exists:
+     Scene 1            = Hook / intro — name the overall topic and preview
+                           the parts, but do NOT explain any of them yet.
+     Scenes 2 .. (N-1)   = ONE scene per named part, in order. Never combine
+                           two named parts into a single scene, even if a
+                           part is short — a short part gets a short scene,
+                           not a shared one.
+     Scene N             = Summary recapping every named part + call to action.
+     Required scene count = (number of named parts) + 2.
+     TARGET DURATION above is a guide, not a hard limit: if hitting it
+     would force combining two named parts into one scene, ignore the
+     duration and keep them separate instead. It is fine to run over or
+     under {target_duration}s for this reason.
+     If (number of named parts) + 2 exceeds {max_scenes}, keep every part
+     as its own scene anyway and drop the standalone intro/summary framing
+     into the first/last content scene instead — do not merge two parts.
+
+   Step C — If there is NO fixed named set (e.g. an open-ended explainer),
+     use your judgment: one scene per natural sub-topic, {min_scenes} to
+     {max_scenes} scenes, each roughly {scene_duration_hint} seconds —
+     this is an average, not a per-scene requirement.
 
 7. TAGS: Generate 8-10 relevant YouTube tags.
 8. DESCRIPTION: Write a compelling 2-3 sentence YouTube description.
@@ -201,10 +225,29 @@ CRITICAL RULES — follow these exactly:
    Set narration to empty string "" when using dialogue_lines.
    Alternate speaker_a and speaker_b naturally.
 
-6. SCENE STRUCTURE:
-   Scene 1: Hook — grab attention, state what viewer will learn
-   Scene 2 to N-1: Core content — one concept per scene
-   Scene N: Summary + call to action
+6. SCENE STRUCTURE — decompose the topic BEFORE deciding scene count:
+
+   Step A — Check for a fixed, named set of sub-concepts.
+   Many topics have one built in: an acronym (SOLID, CAP, ACID), numbered
+   steps, distinct "types of X", layers (OSI model), or named principles.
+   If the topic has one, identify EXACTLY how many named parts it has.
+
+   Step B — If a fixed set exists:
+     Scene 1            = Hook / intro — name the overall topic and preview
+                           the parts, but do NOT explain any of them yet.
+     Scenes 2 .. (N-1)   = ONE scene per named part, in order. Never combine
+                           two named parts into a single scene, even if a
+                           part is short — a short part gets a short scene,
+                           not a shared one.
+     Scene N             = Summary recapping every named part + call to action.
+     Required scene count = (number of named parts) + 2.
+     If that exceeds {max_scenes}, keep every part as its own scene anyway
+     and drop the standalone intro/summary framing into the first/last
+     content scene instead — do not merge two parts.
+
+   Step C — If there is NO fixed named set (e.g. an open-ended explainer),
+     use your judgment: one scene per natural sub-topic, {min_scenes} to
+     {max_scenes} scenes.
 
 7. TAGS: Generate 8-10 relevant YouTube tags.
 8. DESCRIPTION: Write a compelling 2-3 sentence YouTube description.
@@ -631,4 +674,3 @@ def script_agent(state: dict) -> dict:
         "status": PipelineStatus.FAILED,
         "errors": [error_msg]
     }
-

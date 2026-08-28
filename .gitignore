@@ -222,6 +222,10 @@ __marimo__/
 outputs/
 assets/background_music.mp3
 
+# Generated inputs — never commit these
+input/
+
+
 # Manim temp files
 *.mp4
 *.mp3
