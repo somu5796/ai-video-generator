@@ -1,6 +1,47 @@
 import os
+import re
 from renderers.base_renderer import SlideRenderer
 from tools.slide_video_tool import assemble_images_to_video
+
+_HIERARCHY_SEP_RE = re.compile(r'\s*(?:└─>|->|→|↳|➔|⬅|=>)\s*')
+
+_LATEX_ARROW_RE = re.compile(
+    r'\\(?:rightarrow|Rightarrow|to|implies|downarrow|leftarrow|Leftarrow|uparrow)'
+)
+
+
+def _sanitize_math(text: str) -> str:
+    """
+    Scripts occasionally slip into LaTeX math notation for arrows
+    ($\\rightarrow$, $\\downarrow$, etc.) instead of plain characters —
+    common since these training patterns show up a lot in technical
+    diagram content. Left as-is, these render as literal garbage text
+    (or worse, get picked up by the newline-fallback in
+    _split_diagram_parts as their own bogus "line" of content).
+    Converts every known LaTeX arrow macro to a plain "->" (which
+    _split_diagram_parts already understands) and strips leftover
+    "$" math-mode delimiters.
+    """
+    text = _LATEX_ARROW_RE.sub('->', text or '')
+    text = text.replace('$', '')
+    return text
+
+
+def _split_diagram_parts(text: str) -> list:
+    """
+    Splits diagram text into its component parts — on ANY arrow-like
+    separator the script might use (different scenes have used └─>,
+    ↳, ➔, and ⬅ for the same "connects to" idea, and _sanitize_math
+    normalizes LaTeX arrow macros to "->" before this ever runs), or
+    on plain newlines if no arrow is present at all (a bare list with
+    no connector). Layout (hierarchy/parallel/flow) is decided
+    separately via diagram_layout — this only extracts the parts.
+    """
+    text = _sanitize_math(text)
+    parts = [p.strip() for p in _HIERARCHY_SEP_RE.split(text) if p.strip()]
+    if len(parts) > 1:
+        return parts
+    return [p.strip() for p in text.split("\n") if p.strip()]
 
 # Minimum time (seconds) a build state stays on screen.
 # Prevents near-zero-duration flashes when the script crams
@@ -95,7 +136,7 @@ class HtmlRenderer(SlideRenderer):
         for el in state["revealed"]:
             is_hl = el.element_id in state["highlighted_ids"]
             vt = el.visual_type.value
-            text = _escape(el.text)
+            text = _escape(_sanitize_math(el.text))
 
             if vt == "title":
                 body_parts.append(
@@ -106,11 +147,15 @@ class HtmlRenderer(SlideRenderer):
                     f'<div class="slide-subtitle{" hl" if is_hl else ""}">{text}</div>'
                 )
             elif vt == "bullet":
-                body_parts.append(
-                    f'<div class="bullet{" hl" if is_hl else ""}">'
-                    f'<span class="bullet-mark">&#10148;</span>'
-                    f'<span>{text}</span></div>'
-                )
+                items = [p.strip(" •") for p in text.split("•") if p.strip(" •")]
+                if len(items) <= 1:
+                    items = [text]
+                for item in items:
+                    body_parts.append(
+                        f'<div class="bullet{" hl" if is_hl else ""}">'
+                        f'<span class="bullet-mark">&#10148;</span>'
+                        f'<span>{item}</span></div>'
+                    )
             elif vt == "code":
                 body_parts.append(
                     f'<pre class="code-block{" hl" if is_hl else ""}">{text}</pre>'
@@ -120,15 +165,63 @@ class HtmlRenderer(SlideRenderer):
                     f'<div class="concept-box equation{" hl" if is_hl else ""}">{text}</div>'
                 )
             elif vt == "diagram":
-                body_parts.append(
-                    f'<div class="concept-box diagram{" hl" if is_hl else ""}">{text}</div>'
-                )
+                parts = _split_diagram_parts(el.text)
+                layout = (getattr(el, "diagram_layout", "") or "").strip().lower()
+
+                if not layout:
+                    # Legacy script (generated before diagram_layout existed) —
+                    # default multi-part content to the vertical hierarchy
+                    # rendering, matching original behavior, rather than
+                    # guessing "parallel" and risking an equally-wrong guess.
+                    layout = "hierarchy" if len(parts) > 1 else "single"
+
+                if layout == "parallel" and len(parts) > 1:
+                    # Independent siblings — separate bordered chips side by
+                    # side, NOT a vertical chain implying parent → child.
+                    items_html = "".join(
+                        f'<div class="parallel-item">{_escape(p)}</div>'
+                        for p in parts
+                    )
+                    body_parts.append(
+                        f'<div class="concept-box parallel{" hl" if is_hl else ""}">{items_html}</div>'
+                    )
+                elif layout == "flow" and len(parts) > 1:
+                    # A single A → B relationship, one line, one arrow.
+                    flow_html = '<span class="flow-arrow">&#10132;</span>'.join(
+                        f'<span>{_escape(p)}</span>' for p in parts
+                    )
+                    body_parts.append(
+                        f'<div class="concept-box flow{" hl" if is_hl else ""}">{flow_html}</div>'
+                    )
+                elif layout == "hierarchy" and len(parts) > 1:
+                    # A real parent → child chain — vertical, indented, branch-marked.
+                    lines_html = "".join(
+                        f'<div class="hierarchy-line" style="padding-left:{i*36}px">'
+                        f'{"&#9492;&#9472;&gt; " if i > 0 else ""}{_escape(p)}</div>'
+                        for i, p in enumerate(parts)
+                    )
+                    body_parts.append(
+                        f'<div class="concept-box hierarchy{" hl" if is_hl else ""}">{lines_html}</div>'
+                    )
+                else:
+                    body_parts.append(
+                        f'<div class="concept-box diagram{" hl" if is_hl else ""}">{text}</div>'
+                    )
             elif vt == "arrow":
-                body_parts.append(
-                    f'<div class="arrow-row{" hl" if is_hl else ""}">'
-                    f'<span class="arrow-label">{text}</span>'
-                    f'<span class="arrow-glyph">&#10132;</span></div>'
-                )
+                parts = _split_diagram_parts(el.text)
+                if len(parts) > 1:
+                    arrow_html = '<span class="arrow-glyph">&#10132;</span>'.join(
+                        f'<span class="arrow-label">{_escape(p)}</span>' for p in parts
+                    )
+                    body_parts.append(
+                        f'<div class="arrow-row{" hl" if is_hl else ""}">{arrow_html}</div>'
+                    )
+                else:
+                    body_parts.append(
+                        f'<div class="arrow-row{" hl" if is_hl else ""}">'
+                        f'<span class="arrow-label">{text}</span>'
+                        f'<span class="arrow-glyph">&#10132;</span></div>'
+                    )
             else:
                 body_parts.append(f'<div class="bullet">{text}</div>')
 
@@ -216,6 +309,47 @@ class HtmlRenderer(SlideRenderer):
     padding: 28px 56px;
     border-radius: 14px;
     text-align: center;
+  }}
+  .concept-box.hierarchy {{
+    text-align: left;
+    font-size: 34px;
+    max-width: 70%;
+  }}
+  .hierarchy-line {{
+    white-space: nowrap;
+  }}
+  .concept-box.parallel {{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    gap: 24px;
+    max-width: 90%;
+    background: none;
+    border: none;
+    padding: 0;
+  }}
+  .parallel-item {{
+    border: 2px solid {c['accent_color']};
+    background: {c['highlight_bg']};
+    color: {c['title_color']};
+    font-size: 32px;
+    font-weight: 700;
+    padding: 20px 32px;
+    border-radius: 12px;
+    text-align: center;
+  }}
+  .concept-box.flow {{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+    font-size: 38px;
+  }}
+  .flow-arrow {{
+    color: {c['accent_color']};
+    font-size: 34px;
   }}
   .arrow-row {{
     display: flex; align-items: center; gap: 24px;

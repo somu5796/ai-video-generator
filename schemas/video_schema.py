@@ -77,6 +77,20 @@ class VisualElement(BaseModel):
     duration: float = Field(default=3.0, description="How long element stays visible")
     position: str = Field(default="center", description="center / top / bottom / left / right")
     emphasis: bool = Field(default=False, description="If True, animate with extra attention effect")
+    diagram_layout: str = Field(
+        default="",
+        description=(
+            "Only meaningful when visual_type is 'diagram'. One of: "
+            "'hierarchy' (A leads to/contains B leads to/contains C — a real "
+            "parent-child chain, e.g. an interface implemented by one thing "
+            "that in turn specializes into another), "
+            "'parallel' (independent siblings that don't lead to each other — "
+            "e.g. one fat interface split into several separate smaller "
+            "interfaces, or several unrelated items being listed together), "
+            "'flow' (a single A-to-B relationship, e.g. one thing depends on "
+            "or points to another). Leave empty for non-diagram elements."
+        ),
+    )
 
 
 class DialogueLine(BaseModel):

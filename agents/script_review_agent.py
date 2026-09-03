@@ -1,6 +1,6 @@
 import os
 from schemas.video_schema import PipelineStatus
-from utils.script_review_utils import write_review_file, parse_review_file
+from utils.script_review_utils import write_review_file, parse_review_file, save_script_snapshot
 
 
 def script_review_agent(state: dict) -> dict:
@@ -60,6 +60,12 @@ def script_review_agent(state: dict) -> dict:
         except FileNotFoundError:
             print(f"[Script Review] ⚠️  Could not find {review_path} — did you move or delete it?")
             continue
+
+        # Keep script.json in sync with every reviewed round — not just on
+        # approval — so a crash mid-review, or a --script-file taken from
+        # this run later, never replays stale pre-review narration/timing.
+        script_json_path = os.path.join(run_dir, "script.json")
+        save_script_snapshot(script, script_json_path)
 
         if action == "approve":
             print(f"\n[Script Review] ✅ Approved")

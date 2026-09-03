@@ -28,6 +28,23 @@ def load_script_snapshot(path: str) -> Script:
     return Script.model_validate(data)
 
 
+def save_script_snapshot(script: Script, path: str) -> str:
+    """
+    Writes the full Script (same shape Script Agent's script.json
+    dump uses) to disk. Called after script_review approves/re-parses
+    edits, so script.json on disk always reflects the LATEST reviewed
+    version — not the pre-review draft Script Agent originally wrote.
+
+    This matters specifically because --script-file reads this same
+    file back in later. Without this, a script.json snapshot taken
+    from a reviewed run would silently replay the ORIGINAL narration/
+    appear_at, discarding every edit made during review.
+    """
+    with open(path, "w") as f:
+        json.dump(script.model_dump(), f, indent=2, default=str)
+    return path
+
+
 def write_review_file(script, path: str) -> str:
     """
     Writes the current script as a human-editable markdown file.

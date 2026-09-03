@@ -41,6 +41,11 @@ class PipelineState(TypedDict, total=False):
     # v3 addition
     script_file: Optional[str]          # path to a pre-approved script.json snapshot;
                                          # when set, script_agent + script_review are skipped entirely
+    slides_dir: Optional[str]           # folder of hand-edited build-state PNGs;
+                                         # used per-scene where a complete matching set exists,
+                                         # auto-render fills in the rest
+    audio_dir: Optional[str]            # folder of already-generated scene_{N}.mp3 files;
+                                         # used per-scene instead of a new ElevenLabs call
 
 
 # ── Router functions ───────────────────────────────────────────────────────────
@@ -63,9 +68,12 @@ def route_after_initialise(state: dict) -> Literal["script_agent", "deck_preview
     If a script_file was supplied and initialise_pipeline successfully
     loaded it into state["script"] (status already SCRIPT_COMPLETE),
     skip script_agent AND script_review_agent entirely — no LLM call,
-    no re-approval of a script that's already approved — and go
-    straight to the same fork route_after_review would have used:
-    deck_preview for deck mode, voice_agent for word-reveal mode.
+    no re-approval of a script that's already approved.
+
+    From there, deck mode normally goes to deck_preview — UNLESS
+    slides_dir is also set, in which case the user has already made
+    the visual/style call by hand-editing slides, so there's nothing
+    left to preview; go straight to voice_agent.
 
     If loading the script_file failed, initialise_pipeline will have
     set status=FAILED with an error message — route to error_handler.
@@ -76,7 +84,7 @@ def route_after_initialise(state: dict) -> Literal["script_agent", "deck_preview
     if state.get("errors"):
         return "error"
     if state.get("script_file") and _status_value(state) == "script_complete":
-        if state.get("visual_mode") == "deck":
+        if state.get("visual_mode") == "deck" and not state.get("slides_dir"):
             return "deck_preview"
         return "voice_agent"
     return "script_agent"
@@ -95,14 +103,16 @@ def route_after_review(state: dict) -> Literal["deck_preview", "voice_agent", "e
     """
     Routes after the Script Review gate.
     Deck mode goes through the deck-preview gate first (style approval,
-    no ElevenLabs cost); word-reveal mode goes straight to Voice Agent
-    exactly as before.
+    no ElevenLabs cost) — unless slides_dir is set, in which case the
+    user has already made the visual call by hand-editing slides, so
+    it goes straight to Voice Agent. Word-reveal mode always goes
+    straight to Voice Agent, exactly as before.
     """
     if state.get("errors"):
         return "error"
     if _status_value(state) != "script_complete":
         return "error"
-    if state.get("visual_mode") == "deck":
+    if state.get("visual_mode") == "deck" and not state.get("slides_dir"):
         return "deck_preview"
     return "voice_agent"
 
@@ -196,6 +206,8 @@ def initialise_pipeline(state: dict) -> dict:
     print(f"[Pipeline] Visual mode : {visual_mode}")
     if script_file:
         print(f"[Pipeline] Script file : {script_file} (skipping script_agent + script_review)")
+    if state.get("slides_dir"):
+        print(f"[Pipeline] Slides dir  : {state.get('slides_dir')} (edited slides used where a complete set exists)")
 
     # Create unique output directories for this run
     run_dirs = get_output_dirs(topic)
@@ -356,6 +368,8 @@ def run_pipeline(
     review_action: str = None,
     preview_action: str = None,
     script_file: str = None,
+    slides_dir: str = None,
+    audio_dir: str = None,
 ) -> dict:
     """
     Entry point for running the full pipeline.
@@ -365,6 +379,19 @@ def run_pipeline(
     full Script dump, same shape output/<run>/script.json already
     has). When set, script_agent and script_review_agent are skipped
     entirely — see route_after_initialise / initialise_pipeline.
+
+    slides_dir: folder of hand-edited build-state PNGs, named
+    scene_{N:02d}_state_{i:02d}.png (see utils/edited_slides.py).
+    Used per-scene, wherever a complete matching set exists — deck_agent
+    falls back to auto-rendering any scene that isn't fully covered.
+    When set, the deck_preview gate is skipped (nothing left to
+    approve stylistically once slides are hand-edited).
+
+    audio_dir: folder of already-generated scene_{N:02d}.mp3 files
+    (see utils/reused_audio.py) — typically a prior run's own
+    outputs/<run>/audio/ folder. Used per-scene instead of a new
+    ElevenLabs call, so a slides-only or deck-only re-run doesn't
+    spend quota regenerating narration that hasn't changed.
     """
     pipeline = build_video_pipeline()
 
@@ -377,6 +404,8 @@ def run_pipeline(
         "review_action": review_action,
         "preview_action": preview_action,
         "script_file": script_file,
+        "slides_dir": slides_dir,
+        "audio_dir": audio_dir,
         "status": PipelineStatus.PENDING,
         "errors": [],
         "retry_count": 0,

@@ -89,6 +89,22 @@ CRITICAL RULES — follow these exactly:
    "arrow"     → connection between two concepts
    "highlight" → emphasis on existing element
 
+   FOR "diagram" ELEMENTS ONLY — set diagram_layout to ONE of:
+   "hierarchy" → a real parent → child chain (A leads to / is built from B,
+                  which leads to C). Vertical branching tree.
+   "parallel"  → independent siblings that do NOT lead to each other —
+                  e.g. one thing split into several separate, unrelated
+                  parts (A, B, C listed together, none leading to the
+                  others). Side by side, NOT a vertical chain — using
+                  "hierarchy" here wrongly implies a parent-child link
+                  that isn't real. This mix-up is the most common mistake.
+   "flow"      → exactly one A-to-B relationship (one arrow, two items).
+   Leave diagram_layout "" for every other visual_type.
+
+   TEXT FORMAT: never use LaTeX/math notation (no $...$, no \\rightarrow,
+   \\downarrow, \\to, \\implies, or similar). Use plain "->" for any
+   arrow/connection instead (e.g. "A -> B", never "A $\\rightarrow$ B").
+
 4. ESTIMATED DURATION: Calculate as word_count_of_narration / 2.3
 
 5. DIALOGUE MODE (only when speaker_mode is "dialogue"):
@@ -129,6 +145,8 @@ CRITICAL RULES — follow these exactly:
 7. TAGS: Generate 8-10 relevant YouTube tags.
 8. DESCRIPTION: Write a compelling 2-3 sentence YouTube description.
 
+IMPORTANT: Every example word, name, or phrase used anywhere above in this prompt (in the rules, or in the JSON structure below) is illustrating FORMAT ONLY. Do not reuse any of that example wording in your actual output — every scene, narration, and visual element you generate must be entirely specific to the real topic: {topic}.
+
 Return this exact JSON structure:
 {{
   "title": "video title here",
@@ -154,7 +172,18 @@ Return this exact JSON structure:
           "appear_at": 0.0,
           "duration": 4.0,
           "position": "center",
-          "emphasis": false
+          "emphasis": false,
+          "diagram_layout": ""
+        }},
+        {{
+          "element_id": "e2",
+          "text": "<diagram content specific to {topic} — e.g. 'X, Y, Z' for parallel siblings, or 'X -> Y' for a real hierarchy/flow relationship>",
+          "visual_type": "diagram",
+          "appear_at": 8.0,
+          "duration": 6.0,
+          "position": "center",
+          "emphasis": false,
+          "diagram_layout": "parallel"
         }}
       ],
       "estimated_duration": 25.0,
@@ -218,6 +247,22 @@ CRITICAL RULES — follow these exactly:
    "arrow"     → connection between two concepts
    "highlight" → emphasis on existing element
 
+   FOR "diagram" ELEMENTS ONLY — set diagram_layout to ONE of:
+   "hierarchy" → a real parent → child chain (A leads to / is built from B,
+                  which leads to C). Vertical branching tree.
+   "parallel"  → independent siblings that do NOT lead to each other —
+                  e.g. one thing split into several separate, unrelated
+                  parts (A, B, C listed together, none leading to the
+                  others). Side by side, NOT a vertical chain — using
+                  "hierarchy" here wrongly implies a parent-child link
+                  that isn't real. This mix-up is the most common mistake.
+   "flow"      → exactly one A-to-B relationship (one arrow, two items).
+   Leave diagram_layout "" for every other visual_type.
+
+   TEXT FORMAT: never use LaTeX/math notation (no $...$, no \\rightarrow,
+   \\downarrow, \\to, \\implies, or similar). Use plain "->" for any
+   arrow/connection instead (e.g. "A -> B", never "A $\\rightarrow$ B").
+
 4. ESTIMATED DURATION: Calculate as word_count_of_narration / 2.3
 
 5. DIALOGUE MODE (only when speaker_mode is "dialogue"):
@@ -252,6 +297,8 @@ CRITICAL RULES — follow these exactly:
 7. TAGS: Generate 8-10 relevant YouTube tags.
 8. DESCRIPTION: Write a compelling 2-3 sentence YouTube description.
 
+IMPORTANT: Every example word, name, or phrase used anywhere above in this prompt (in the rules, or in the JSON structure below) is illustrating FORMAT ONLY. Do not reuse any of that example wording in your actual output — every scene, narration, and visual element you generate must be entirely specific to the real topic: {topic}.
+
 Return this exact JSON structure:
 {{
   "title": "video title here",
@@ -277,7 +324,18 @@ Return this exact JSON structure:
           "appear_at": 0.0,
           "duration": 4.0,
           "position": "center",
-          "emphasis": false
+          "emphasis": false,
+          "diagram_layout": ""
+        }},
+        {{
+          "element_id": "e2",
+          "text": "<diagram content specific to {topic} — e.g. 'X, Y, Z' for parallel siblings, or 'X -> Y' for a real hierarchy/flow relationship>",
+          "visual_type": "diagram",
+          "appear_at": 8.0,
+          "duration": 6.0,
+          "position": "center",
+          "emphasis": false,
+          "diagram_layout": "parallel"
         }}
       ],
       "estimated_duration": 25.0,
@@ -617,15 +675,22 @@ def script_agent(state: dict) -> dict:
                 )
 
             if scene_count > max_scenes:
-                # Trim excess scenes rather than rejecting
+                # Previously this force-trimmed script.scenes[:max_scenes],
+                # silently DROPPING entire scenes (narration, visuals, all
+                # of it) just to fit the config bucket's scene-count guess.
+                # That's exactly the kind of config-driven content loss we
+                # don't want — max_scenes is a generation *hint* to the
+                # LLM prompt, not a hard cap on what the video is allowed
+                # to contain. Keep every scene the LLM actually wrote and
+                # let total_estimated_duration reflect the real content;
+                # downstream agents (voice/deck/assembly) already use
+                # actual/estimated duration with no length cap of their
+                # own, so the real runtime flows through untouched.
                 print(
-                    f"[Script Agent] Trimming from {scene_count} "
-                    f"to {max_scenes} scenes"
-                )
-                script.scenes = script.scenes[:max_scenes]
-                # Recalculate total duration after trim
-                script.total_estimated_duration = round(
-                    sum(s.estimated_duration for s in script.scenes), 1
+                    f"[Script Agent] ⚠️  LLM generated {scene_count} scenes, "
+                    f"more than the {max_scenes}-scene guide for this format. "
+                    f"Keeping all {scene_count} — the video will run longer "
+                    f"than the '{video_format}' target rather than lose content."
                 )
 
             # Success

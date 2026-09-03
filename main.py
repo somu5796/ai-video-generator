@@ -86,6 +86,32 @@ def main():
         )
     )
 
+    parser.add_argument(
+        "--slides-dir",
+        type=str,
+        default=None,
+        help=(
+            "Deck mode only. Folder of hand-edited build-state PNGs, named "
+            "scene_{N:02d}_state_{i:02d}.png. Used per-scene wherever a "
+            "complete matching set exists — deck_agent auto-renders any "
+            "scene not fully covered. Skips the deck-preview gate (see "
+            "deck_preview_agent.py's printed filenames from a prior deck-"
+            "mode run for the exact names it expects)."
+        )
+    )
+
+    parser.add_argument(
+        "--audio-dir",
+        type=str,
+        default=None,
+        help=(
+            "Folder of already-generated scene_{N:02d}.mp3 files (typically "
+            "a prior run's own outputs/<run>/audio/ folder). Used per-scene "
+            "instead of a new ElevenLabs call, so a slides-only or deck-only "
+            "re-run doesn't spend quota regenerating unchanged narration."
+        )
+    )
+
     args = parser.parse_args()
 
     if not args.script_file and not args.topic:
@@ -104,6 +130,10 @@ def main():
     print(f"Format: {args.format} | Style: {args.style} | Visual mode: {args.visual_mode}")
     if args.script_file:
         print(f"Script file: {args.script_file} (skipping script generation + review)")
+    if args.slides_dir:
+        print(f"Slides dir: {args.slides_dir} (hand-edited slides used where a complete set exists)")
+    if args.audio_dir:
+        print(f"Audio dir: {args.audio_dir} (existing audio reused where a matching file exists)")
     print()
 
     result = run_pipeline(
@@ -114,6 +144,8 @@ def main():
         review_action=args.review_action,
         preview_action=args.preview_action,
         script_file=args.script_file,
+        slides_dir=args.slides_dir,
+        audio_dir=args.audio_dir,
     )
 
     status = result.get("status")

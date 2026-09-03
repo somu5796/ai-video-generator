@@ -2,6 +2,7 @@ import os
 from schemas.video_schema import PipelineStatus, VideoStyle
 from renderers.registry import get_renderer_for_style
 from renderers.style_config import load_or_create_style_config, style_config_path
+from utils.edited_slides import expected_state_filenames
 from config import VIDEO_WIDTH, VIDEO_HEIGHT
 
 
@@ -103,6 +104,15 @@ def deck_preview_agent(state: dict) -> dict:
 
         if action == "approve":
             print("[Deck Preview] ✅ Style approved — proceeding to full render")
+            print(
+                "\n[Deck Preview] If you want to hand-edit any scene's slides "
+                "instead of auto-rendering, put images named exactly like this "
+                "in a folder and pass it as --slides-dir:"
+            )
+            for scene in script.scenes:
+                state_count = len(renderer.build_states(scene, style_config))
+                names = expected_state_filenames(scene.scene_number, state_count)
+                print(f"    Scene {scene.scene_number} ({state_count} states): {', '.join(names)}")
             return {"errors": []}
         elif action == "revise":
             print("[Deck Preview] Re-rendering previews with updated style...")

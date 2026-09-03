@@ -4,8 +4,10 @@ from schemas.video_schema import (PipelineStatus, SpeakerMode)
 from tools.elevenlabs_tool import (
     generate_audio_for_text,
     generate_dialogue_audio,
-    check_quota
+    check_quota,
+    get_audio_duration,
 )
+from utils.reused_audio import find_existing_audio_for_scene
 from config import VOICE_ID_PRIMARY, VOICE_ID_SECONDARY, AUDIO_DIR
 
 def voice_agent(state : dict) -> dict:
@@ -27,10 +29,15 @@ def voice_agent(state : dict) -> dict:
     with a clear message rather than generating half the audio
     and failing mid-pipeline.
 
-    Character estimation:
-    1 character ≈ 1 char of narration text
-    We sum all narration lengths before starting to estimate
-    total characters needed.
+    Reuse (state["audio_dir"]):
+    If set, each scene checks for an already-generated scene_{N}.mp3
+    in that folder first. If found, it's used directly (duration
+    measured from the file itself, same pydub helper Voice Agent
+    always uses) and NO ElevenLabs call is made for that scene — the
+    quota estimate below only counts characters for scenes that will
+    actually be generated. Falls back to normal generation per-scene
+    if a given scene's file isn't there, same mixed-mode pattern as
+    deck_agent's slides_dir.
     """
     print("\n" + "=" * 50)
     print("[Voice Agent] Starting")
@@ -44,17 +51,27 @@ def voice_agent(state : dict) -> dict:
             "errors": ["Voice Agent: no script found in state"]
         }
     
-    #Estimate total characters needed 
-    total_chars =0
+    audio_dir = state.get("audio_dir")
+
+    #Estimate total characters needed — SKIP scenes with reusable audio,
+    # since those never touch ElevenLabs at all.
+    total_chars = 0
+    reused_count = 0
     for scene in script.scenes:
+        if find_existing_audio_for_scene(audio_dir, scene.scene_number):
+            reused_count += 1
+            continue
         if scene.narration:
             total_chars += len(scene.narration)
         elif scene.dialogue_lines:
             for line in scene.dialogue_lines:
                 total_chars += len(line.text)
-    
+
     print(f"[Voice Agent] Scenes to process : {len(script.scenes)}")
-    print(f"[Voice Agent] Total characters  : {total_chars}")
+    if audio_dir:
+        print(f"[Voice Agent] Audio dir         : {audio_dir}")
+        print(f"[Voice Agent] Reused audio      : {reused_count}/{len(script.scenes)} scene(s) — no quota spent on these")
+    print(f"[Voice Agent] Total characters  : {total_chars} (scenes still needing generation)")
     print(f"[Voice Agent] Speaker mode      : {script.speaker_config.mode}")
 
 
@@ -94,6 +111,17 @@ def voice_agent(state : dict) -> dict:
         os.makedirs(audio_output_dir, exist_ok=True)
 
         print(f"\n[Voice Agent] Processing Scene {scene_num}: {scene.title}")
+
+        # Reuse escape hatch — check FIRST, before spending any quota.
+        existing_audio_path = find_existing_audio_for_scene(audio_dir, scene_num)
+        if existing_audio_path:
+            duration = get_audio_duration(existing_audio_path)
+            scene.audio_file_path = existing_audio_path
+            scene.actual_duration = duration
+            total_actual_duration += duration
+            print(f"  [Voice Agent] ♻️  Reused existing audio: {existing_audio_path} ({duration}s)")
+            updated_scenes.append(scene)
+            continue
 
         # Single narration mode
         if script.speaker_config.mode == SpeakerMode.SINGLE:
